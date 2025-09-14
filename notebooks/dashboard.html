@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SmogSense — AQI Dashboard</title>
+
+  <!-- Plotly -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+  <!-- Leaflet for map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-sA+q2kE2u7gWfXl3r6q6W9D7f3L6RZ2e4G6u3mXkN0M=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-VkC1g+6vWHJ3o2cA3nKfWJB3q0bJY8hR7XrIx9cR9wQ=" crossorigin=""></script>
+
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --card-bg: #ffffff;
+      --bg: #f4f6f8;
+      --accent: #1976d2;
+      --danger: #d32f2f;
+      --good: #2e7d32;
+      --muted: #6b7280;
+    }
+    body{ font-family: Inter, "Segoe UI", Arial; margin:0; background:var(--bg); color:#111;}
+    .container{ max-width:1100px; margin:20px auto; padding:18px; }
+    .grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-bottom:18px;}
+    .card { background:var(--card-bg); border-radius:10px; padding:14px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);}
+    .title { font-size:16px; color:var(--muted); margin-bottom:6px;}
+    .value { font-size:28px; font-weight:700; }
+    .muted { color:var(--muted); font-size:13px; }
+    #charts { display:grid; grid-template-columns: 1fr 380px; gap:14px; align-items:start; }
+    #timeseries { min-height:360px; background:var(--card-bg); padding:8px; border-radius:10px; }
+    #side { display:flex; flex-direction:column; gap:14px; }
+    #map { height:360px; border-radius:10px; }
+    .input-row { display:flex; gap:8px; }
+    input[type=number]{ width:100%; padding:8px; border-radius:6px; border:1px solid #ddd; }
+    button{ background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:8px; cursor:pointer;}
+    .small { font-size:13px; color:var(--muted); }
+    @media (max-width:900px){
+      .grid{ grid-template-columns: repeat(1,1fr);}
+      #charts{ grid-template-columns: 1fr; }
+      #side{ order:2; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>SmogSense — AQI Dashboard (demo)</h2>
+
+    <!-- Summary cards -->
+    <div class="grid">
+      <div class="card">
+        <div class="title">Current AQI</div>
+        <div id="aqi-card" class="value">—</div>
+        <div id="aqi-category" class="muted small">—</div>
+      </div>
+      <div class="card">
+        <div class="title">Primary Pollutant</div>
+        <div id="primary" class="value">—</div>
+        <div class="muted small">Sensor: Demo Sensor</div>
+      </div>
+      <div class="card">
+        <div class="title">Last update</div>
+        <div id="last-update" class="value">—</div>
+        <div class="muted small">Timezone: local</div>
+      </div>
+    </div>
+
+    <!-- Charts + map -->
+    <div id="charts">
+      <div id="timeseries" class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div><strong>Actual vs Predicted AQI</strong><div class="small">Hover to inspect points</div></div>
+          <div class="small">Show last <select id="nshow">
+            <option>10</option><option>20</option><option selected>30</option>
+          </select> samples</div>
+        </div>
+        <div id="plotly-chart" style="width:100%;height:300px;"></div>
+      </div>
+
+      <div id="side">
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:6px;">Predict AQI (demo)</div>
+          <div class="small" style="margin-bottom:8px;">Enter pollutant values. (This is a local demo predictor — replace with your model API call.)</div>
+          <div style="display:grid; gap:8px;">
+            <label>PM2.5<input id="inp-pm25" type="number" step="0.1" value="30"></label>
+            <label>PM10 <input id="inp-pm10" type="number" step="0.1" value="50"></label>
+            <label>NO₂  <input id="inp-no2" type="number" step="0.1" value="25"></label>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <button id="btn-predict">Predict</button>
+              <button id="btn-reset" style="background:#eee; color:#111;">Reset</button>
+            </div>
+            <div style="margin-top:10px;">
+              <div class="small">Predicted AQI:</div>
+              <div id="pred-output" style="font-weight:700; font-size:20px;">—</div>
+            </div>
+            <div class="small" style="margin-top:6px;">Tip: Replace the JS `predictAQI` function with a `fetch()` call to your model API (POST features) and show the returned result.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:700; margin-bottom:6px;">Sensors Map</div>
+          <div id="map"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;" class="small muted">
+      Replace the sample data in the &lt;script&gt; section with your real data exported from Python or load it via fetch/from notebook cells.
+    </div>
+  </div>
+
+  <script>
+    /***** SAMPLE DATA - replace these arrays with your real values *****/
+    // Simulated time labels
+    const labels = Array.from({length:30}, (_,i) => {
+      const d = new Date(Date.now() - (29 - i)*60*60*1000);
+      return d.toISOString().slice(0,16).replace('T',' ');
+    });
+
+    // Simulated actual AQI values (0..1 normalized) and predicted values
+    const actual = [0.52,0.06,0.33,0.12,0.07,0.99,0.33,0.26,0.69,0.76,0.61,0.48,0.42,0.35,0.92,0.83,0.97,0.13,0.73,0.51,0.60,0.58,0.45,0.47,0.51,0.39,0.62,0.49,0.56,0.44];
+    const predicted = actual.map((v,i) => Math.max(0, Math.min(1, v*0.7 + (Math.random()-0.5)*0.1 + 0.2)));
+
+    // Sample sensor locations (lat, lon, name, current aqi)
+    const sensors = [
+      {lat: 28.6139, lon:77.2090, name:'Sensor - Central', aqi:0.72},
+      {lat: 28.7041, lon:77.1025, name:'Sensor - North', aqi:0.46},
+      {lat: 28.5355, lon:77.3910, name:'Sensor - West', aqi:0.33}
+    ];
+
+    /***** End sample data *****/
+
+    // Utility: convert normalized 0..1 to AQI scale if needed (example maps 0..1 to 0..500)
+    function normToAQI(norm){ return Math.round(norm * 500); }
+
+    // Fill top cards with the most recent sample
+    function updateSummary(){
+      const lastIdx = actual.length - 1;
+      const a = actual[lastIdx];
+      const catText = a <= 0.2 ? "Good" : (a<=0.4 ? "Moderate" : (a<=0.6 ? "Unhealthy for Sensitive Groups" : (a<=0.8 ? "Unhealthy" : "Very Unhealthy")));
+      document.getElementById('aqi-card').textContent = normToAQI(a);
+      document.getElementById('aqi-category').textContent = catText;
+      // primary pollutant (demo): choose by highest among sample sensors (replace your logic)
+      document.getElementById('primary').textContent = "PM2.5";
+      document.getElementById('last-update').textContent = labels[labels.length-1];
+    }
+
+    // Plotly time series
+    function drawTimeseries(nShow=30){
+      const from = Math.max(0, labels.length - nShow);
+      const x = labels.slice(from);
+      const yAct = actual.slice(from);
+      const yPred = predicted.slice(from);
+
+      const trace1 = {
+        x: x, y: yAct, mode: 'lines+markers', name: 'Actual',
+        marker:{symbol:'circle',size:6}, line:{width:2}
+      };
+      const trace2 = {
+        x: x, y: yPred, mode: 'lines+markers', name: 'Predicted',
+        marker:{symbol:'x',size:6}, line:{width:2, dash:'dash'}
+      };
+      const layout = {
+        margin:{l:50,r:20,t:40,b:50},
+        yaxis:{title:'AQI (normalized 0-1)'},
+        xaxis:{tickangle:-45}
+      };
+      Plotly.newPlot('plotly-chart', [trace1, trace2], layout, {responsive:true});
+    }
+
+    // Leaflet map
+    function initMap(){
+      const map = L.map('map', {zoomControl:false}).setView([28.61, 77.20], 10);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+      }).addTo(map);
+
+      sensors.forEach(s => {
+        const color = s.aqi > 0.6 ? '#d32f2f' : (s.aqi>0.4? '#f57c00' : '#2e7d32');
+        const circle = L.circle([s.lat,s.lon], {
+          color: color, fillColor: color, fillOpacity:0.5, radius: 7000
+        }).addTo(map);
+        circle.bindPopup(`<b>${s.name}</b><br>AQI: ${normToAQI(s.aqi)}`);
+      });
+    }
+
+    // Demo predictor function: simple weighted average of pollutant inputs
+    function predictAQI_local(pm25, pm10, no2){
+      // Replace this function with an API call to your trained model
+      // Example demo formula (not a real model)
+      const score = (0.6*(pm25/100) + 0.3*(pm10/150) + 0.1*(no2/200));
+      return Math.max(0, Math.min(1, score));
+    }
+
+    // Bind UI events
+    document.getElementById('btn-predict').addEventListener('click', async ()=>{
+      const pm25 = parseFloat(document.getElementById('inp-pm25').value || 0);
+      const pm10 = parseFloat(document.getElementById('inp-pm10').value || 0);
+      const no2  = parseFloat(document.getElementById('inp-no2').value || 0);
+
+      // Demo local predictor:
+      const norm = predictAQI_local(pm25, pm10, no2);
+      const aqiVal = normToAQI(norm);
+      document.getElementById('pred-output').textContent = `${aqiVal} (norm ${norm.toFixed(2)})`;
+
+      // If you have an API endpoint, replace above with:
+      // const resp = await fetch("http://localhost:5000/predict", {method:"POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({features:[pm25,pm10,no2]})});
+      // const data = await resp.json();
+      // document.getElementById('pred-output').textContent = data.prediction;
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', ()=>{
+      document.getElementById('inp-pm25').value = 30;
+      document.getElementById('inp-pm10').value = 50;
+      document.getElementById('inp-no2').value = 25;
+      document.getElementById('pred-output').textContent = '—';
+    });
+
+    document.getElementById('nshow').addEventListener('change', (e)=>{
+      drawTimeseries(parseInt(e.target.value));
+    });
+
+    // initialize everything
+    updateSummary();
+    drawTimeseries(30);
+    initMap();
+
+    // Optionally expose a function to update data from Python
+    // In Jupyter you can call this by evaluating JS inside the notebook, or by generating the HTML with new arrays.
+    // e.g., you could write JS from Python with IPython.display.Javascript(...) that sets window.actual = [...] and calls drawTimeseries()
+  </script>
+</body>
+</html>
