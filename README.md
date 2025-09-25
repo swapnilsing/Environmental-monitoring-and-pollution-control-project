@@ -12,7 +12,26 @@ The goal of this project is to "track, analyze, and visualize air quality parame
 - 📈 Data visualization through interactive charts and dashboards  
 - 🧹 Pollution trend analysis and pattern detection  
 - ⚙️ Modular codebase  with reproducible Jupyter notebooks  
-- 📦 Easy setup using `requirements.txt`  
+- 📦 Easy setup using `requirements.txt`
+
+
+DEMO PREVIEW
+
+Dashboard:
+
+<img width="1899" height="867" alt="Screenshot 2025-09-25 142134" src="https://github.com/user-attachments/assets/5e894ce3-bd77-4416-9d4b-913fbf9f95b7" />
+
+Datasets:
+
+<img width="1827" height="718" alt="Screenshot 2025-09-25 142530" src="https://github.com/user-attachments/assets/6985243f-0add-4cc4-a853-c670bb9ab808" />
+
+
+PLOTS:
+
+<img width="1429" height="846" alt="image" src="https://github.com/user-attachments/assets/e2f388bd-9756-4340-a2b9-ca42fa94f361" />
+
+<img width="1815" height="739" alt="Screenshot 2025-09-25 142553" src="https://github.com/user-attachments/assets/8fa25f4f-bffe-4623-b564-6e7b947930b3" />
+
 
 🎯 Objective
 
@@ -52,5 +71,6 @@ These datasets serve as the foundation for:
 3)Visualization of pollution patterns
 
 4)Predictive modeling for air quality monitoring
+
 
 
