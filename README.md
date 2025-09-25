@@ -33,6 +33,7 @@ PLOTS:
 <img width="1815" height="739" alt="Screenshot 2025-09-25 142553" src="https://github.com/user-attachments/assets/8fa25f4f-bffe-4623-b564-6e7b947930b3" />
 
 
+
 🎯 Objective
 
 SmogSense aims to **assist in environmental awareness and pollution control** by providing actionable insights from sensor data and datasets.  
@@ -71,6 +72,7 @@ These datasets serve as the foundation for:
 3)Visualization of pollution patterns
 
 4)Predictive modeling for air quality monitoring
+
 
 
 
