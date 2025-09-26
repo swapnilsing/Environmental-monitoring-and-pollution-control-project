@@ -71,7 +71,12 @@ These datasets serve as the foundation for:
 
 3)Visualization of pollution patterns
 
-4)Predictive modeling for air quality monitoring
+4)Predictive modeling for air quality monitoring 
+
+
+Certificate:https://drive.google.com/file/d/1ltmFXpb-GYyuqaXl8mHEiHIAnEmjrXVU/view?usp=drivesdk
+
+
 
 
 
